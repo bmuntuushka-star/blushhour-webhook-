@@ -11,7 +11,7 @@ const FIELDS = [
 
 const HOURS_MESSAGE =
   "BlushHour is open every day from 9 AM to 10 PM. 💕 " +
-  "Please choose an appointment time within our opening hours.";
+  "Please choose a time from 9 AM through 10 PM.";
 
 const PROMPTS = {
   treatment: "Which treatment would you prefer instead?",
@@ -90,7 +90,7 @@ function isValidOpeningTime(value) {
 
   return (
     totalMinutes >= 9 * 60 &&
-    totalMinutes < 22 * 60
+    totalMinutes <= 22 * 60
   );
 }
 
@@ -369,6 +369,20 @@ const server = http.createServer((req, res) => {
         }];
       }
 
+      // CLEAR OLD EDIT AND FOLLOW-UP CONTEXTS
+      function clearOldFlowContexts() {
+        return [
+          "blushhour-edit",
+          "BookAppointment-no-followup",
+          "BookAppointmentChangeDate-followup",
+          "BookAppointmentChangedDate-followup"
+        ].map(name => ({
+          name: `${session}/contexts/${name}`,
+          lifespanCount: 0
+        }));
+      }
+
+      // CLEAR ALL APPOINTMENT CONTEXTS
       function clearAppointment() {
         return [
           {
@@ -388,6 +402,16 @@ const server = http.createServer((req, res) => {
             name:
               `${session}/contexts/BookAppointment-no-followup`,
             lifespanCount: 0
+          },
+          {
+            name:
+              `${session}/contexts/BookAppointmentChangeDate-followup`,
+            lifespanCount: 0
+          },
+          {
+            name:
+              `${session}/contexts/BookAppointmentChangedDate-followup`,
+            lifespanCount: 0
           }
         ];
       }
@@ -396,7 +420,6 @@ const server = http.createServer((req, res) => {
       if (intent === "BookAppointment") {
         const p = qr.parameters || {};
 
-        // Reject appointments outside opening hours.
         if (!isValidOpeningTime(p.time)) {
           return send(
             res,
@@ -418,10 +441,7 @@ const server = http.createServer((req, res) => {
               stage: "review",
               pending: ""
             }),
-            {
-              name: editContextName,
-              lifespanCount: 0
-            }
+            ...clearOldFlowContexts()
           ]
         );
       }
@@ -641,7 +661,6 @@ const server = http.createServer((req, res) => {
           );
         }
 
-        // Check opening hours when changing time.
         if (
           field === "time" &&
           !isValidOpeningTime(value)
