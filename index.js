@@ -9,14 +9,21 @@ const FIELDS = [
   "phone_number"
 ];
 
+const HOURS_MESSAGE =
+  "BlushHour is open every day from 9 AM to 10 PM. 💕 " +
+  "Please choose an appointment time within our opening hours.";
+
 const PROMPTS = {
   treatment: "Which treatment would you prefer instead?",
   date: "What date would you prefer instead?",
-  time: "What time would you prefer instead?",
+  time:
+    "What time would you prefer instead? 💕 " +
+    "We're open every day from 9 AM to 10 PM.",
   customer_name: "What name should I use instead?",
   phone_number: "What phone number should I use instead?"
 };
 
+// FORMAT THE APPOINTMENT DATE
 function formatDate(value) {
   if (!value) return "your selected date";
 
@@ -37,12 +44,13 @@ function formatDate(value) {
   );
 }
 
+// FORMAT TIME AS AM OR PM
 function formatTime(value) {
   if (!value) return "your selected time";
 
   const match =
     String(value).match(/T(\d{2}):(\d{2})/) ||
-    String(value).match(/^(\d{2}):(\d{2})/);
+    String(value).match(/^(\d{1,2}):(\d{2})/);
 
   if (!match) return String(value);
 
@@ -56,6 +64,37 @@ function formatTime(value) {
   );
 }
 
+// CHECK OPENING HOURS: 9 AM TO 10 PM DAILY
+function isValidOpeningTime(value) {
+  if (!value) return false;
+
+  const match =
+    String(value).match(/T(\d{2}):(\d{2})/) ||
+    String(value).match(/^(\d{1,2}):(\d{2})/);
+
+  if (!match) return false;
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+
+  if (
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59
+  ) {
+    return false;
+  }
+
+  const totalMinutes = hour * 60 + minute;
+
+  return (
+    totalMinutes >= 9 * 60 &&
+    totalMinutes < 22 * 60
+  );
+}
+
+// APPOINTMENT SUMMARY
 function appointmentDetails(p) {
   return (
     `You've requested a ${p.treatment || "treatment"} appointment ` +
@@ -92,6 +131,7 @@ function confirmationMessage(edited = false) {
   );
 }
 
+// FIND AN EXISTING DIALOGFLOW CONTEXT
 function findContext(contexts, suffix) {
   return (contexts || []).find(c =>
     c.name?.toLowerCase().endsWith(
@@ -100,6 +140,7 @@ function findContext(contexts, suffix) {
   );
 }
 
+// IDENTIFY THE DETAIL TO CHANGE
 function detectField(text) {
   const s = String(text || "").toLowerCase();
 
@@ -112,7 +153,9 @@ function detectField(text) {
   if (/time|hour/.test(s))
     return "time";
 
-  if (/treatment|service|manicure|pedicure|facial|massage|hair|nail|spa/.test(s))
+  if (
+    /treatment|service|manicure|pedicure|facial|massage|hair|nail|spa/.test(s)
+  )
     return "treatment";
 
   if (/name|spelling/.test(s))
@@ -132,13 +175,17 @@ function isYes(text) {
 }
 
 function isNo(text) {
-  const s = String(text || "").toLowerCase().trim();
+  const s = String(text || "")
+    .toLowerCase()
+    .trim();
 
   return /^(no|nope|incorrect|not correct|not quite|change|edit|something is wrong|i want to change|i need to change)/i.test(s);
 }
 
+// EXTRACT REPLACEMENT INFORMATION
 function replacement(field, data) {
   const p = data.queryResult?.parameters || {};
+
   const text = String(
     data.queryResult?.queryText || ""
   ).trim();
@@ -148,7 +195,9 @@ function replacement(field, data) {
       p.new_date || p.date || text
     );
 
-    const match = value.match(/\d{4}-\d{2}-\d{2}/);
+    const match = value.match(
+      /\d{4}-\d{2}-\d{2}/
+    );
 
     return match ? match[0] : null;
   }
@@ -156,7 +205,9 @@ function replacement(field, data) {
   if (field === "time") {
     const value = String(p.time || text);
 
-    const iso = value.match(/T(\d{2}):(\d{2})/);
+    const iso = value.match(
+      /T(\d{2}):(\d{2})/
+    );
 
     if (iso) {
       return `T${iso[1]}:${iso[2]}`;
@@ -199,7 +250,8 @@ function replacement(field, data) {
   }
 
   if (field === "treatment") {
-    return text.length >= 3 && text.length <= 100
+    return text.length >= 3 &&
+      text.length <= 100
       ? text
       : null;
   }
@@ -207,6 +259,7 @@ function replacement(field, data) {
   return null;
 }
 
+// SEND RESPONSE TO DIALOGFLOW
 function send(res, message, contexts = []) {
   res.writeHead(200, {
     "Content-Type": "application/json"
@@ -255,10 +308,14 @@ const server = http.createServer((req, res) => {
         );
       }
 
-      const intent = qr.intent?.displayName || "";
-      const text = String(qr.queryText || "").trim();
+      const intent =
+        qr.intent?.displayName || "";
 
-      // Separate contexts for new and edited bookings.
+      const text = String(
+        qr.queryText || ""
+      ).trim();
+
+      // SEPARATE BOOKING AND EDITING CONTEXTS
       const bookingContextName =
         `${session}/contexts/blushhour-booking`;
 
@@ -290,7 +347,10 @@ const server = http.createServer((req, res) => {
           "";
       }
 
-      function keepBooking(values, lifespan = 20) {
+      function keepBooking(
+        values,
+        lifespan = 20
+      ) {
         return [{
           name: bookingContextName,
           lifespanCount: lifespan,
@@ -298,7 +358,10 @@ const server = http.createServer((req, res) => {
         }];
       }
 
-      function keepEdit(values, lifespan = 20) {
+      function keepEdit(
+        values,
+        lifespan = 20
+      ) {
         return [{
           name: editContextName,
           lifespanCount: lifespan,
@@ -332,6 +395,19 @@ const server = http.createServer((req, res) => {
       // 1. NEW APPOINTMENT REQUEST
       if (intent === "BookAppointment") {
         const p = qr.parameters || {};
+
+        // Reject appointments outside opening hours.
+        if (!isValidOpeningTime(p.time)) {
+          return send(
+            res,
+            HOURS_MESSAGE,
+            keepBooking({
+              ...p,
+              stage: "replace",
+              pending: "time"
+            })
+          );
+        }
 
         return send(
           res,
@@ -417,7 +493,9 @@ const server = http.createServer((req, res) => {
       }
 
       // 5. CHANGE APPOINTMENT TREATMENT
-      if (intent === "UpdateAppointmentTreatment") {
+      if (
+        intent === "UpdateAppointmentTreatment"
+      ) {
         const treatment =
           qr.parameters?.treatment;
 
@@ -437,7 +515,10 @@ const server = http.createServer((req, res) => {
 
         return send(
           res,
-          updatedSummary(current, "treatment"),
+          updatedSummary(
+            current,
+            "treatment"
+          ),
           keepEdit({
             ...current,
             stage: "review",
@@ -446,8 +527,10 @@ const server = http.createServer((req, res) => {
         );
       }
 
-      // 6. IDENTIFY WHICH DETAIL NEEDS CHANGING
-      if (intent === "ChangeAppointmentDetails") {
+      // 6. IDENTIFY DETAIL TO CHANGE
+      if (
+        intent === "ChangeAppointmentDetails"
+      ) {
         const field =
           detectField(text) ||
           detectField(
@@ -478,7 +561,9 @@ const server = http.createServer((req, res) => {
       }
 
       // 7. CONFIRM EDITED APPOINTMENT
-      if (intent === "ConfirmEditedAppointment") {
+      if (
+        intent === "ConfirmEditedAppointment"
+      ) {
         if (isYes(text)) {
           return send(
             res,
@@ -500,7 +585,7 @@ const server = http.createServer((req, res) => {
         }
       }
 
-      // 8. CUSTOMER CHOOSES A DETAIL TO EDIT
+      // 8. CUSTOMER CHOOSES DETAIL TO EDIT
       if (state.stage === "choose") {
         const field = detectField(text);
 
@@ -533,17 +618,48 @@ const server = http.createServer((req, res) => {
         FIELDS.includes(state.pending)
       ) {
         const field = state.pending;
-        const value = replacement(field, data);
+        const value = replacement(
+          field,
+          data
+        );
 
         if (!value) {
           return send(
             res,
             `I couldn't recognize that information. ${PROMPTS[field]}`,
-            keepEdit({
-              ...current,
-              stage: "replace",
-              pending: field
-            })
+            editContext
+              ? keepEdit({
+                  ...current,
+                  stage: "replace",
+                  pending: field
+                })
+              : keepBooking({
+                  ...current,
+                  stage: "replace",
+                  pending: field
+                })
+          );
+        }
+
+        // Check opening hours when changing time.
+        if (
+          field === "time" &&
+          !isValidOpeningTime(value)
+        ) {
+          return send(
+            res,
+            HOURS_MESSAGE,
+            editContext
+              ? keepEdit({
+                  ...current,
+                  stage: "replace",
+                  pending: "time"
+                })
+              : keepBooking({
+                  ...current,
+                  stage: "replace",
+                  pending: "time"
+                })
           );
         }
 
@@ -563,18 +679,25 @@ const server = http.createServer((req, res) => {
             current,
             detailName[field]
           ),
-          keepEdit({
-            ...current,
-            stage: "review",
-            pending: ""
-          })
+          editContext
+            ? keepEdit({
+                ...current,
+                stage: "review",
+                pending: ""
+              })
+            : keepBooking({
+                ...current,
+                stage: "review",
+                pending: ""
+              })
         );
       }
 
       // 10. FINAL REVIEW AND CONFIRMATION
       if (state.stage === "review") {
         if (isYes(text)) {
-          const wasEdited = Boolean(editContext);
+          const wasEdited =
+            Boolean(editContext);
 
           return send(
             res,
@@ -603,7 +726,10 @@ const server = http.createServer((req, res) => {
       );
 
     } catch (error) {
-      console.error("Webhook error:", error);
+      console.error(
+        "Webhook error:",
+        error
+      );
 
       res.writeHead(400, {
         "Content-Type": "application/json"
@@ -616,4 +742,6 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(process.env.PORT || 3000);
+server.listen(
+  process.env.PORT || 3000
+);
