@@ -205,6 +205,16 @@ function replacement(field, data) {
   if (field === "time") {
     const value = String(p.time || text);
 
+    // Prefer the user's latest typed time over an old parameter.
+    const typed = text.match(
+      /\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b/i
+    );
+    if (typed) {
+      const hour = Number(typed[1]) % 12 +
+        (typed[3].toLowerCase() === "pm" ? 12 : 0);
+      return `T${String(hour).padStart(2, "0")}:${typed[2] || "00"}`;
+    }
+
     const iso = value.match(
       /T(\d{2}):(\d{2})/
     );
@@ -414,6 +424,89 @@ const server = http.createServer((req, res) => {
             lifespanCount: 0
           }
         ];
+      }
+
+      // HANDLE A PENDING REPLACEMENT BEFORE INTENT ROUTING.
+      // This lets a reply such as "10 am" work even if Dialogflow
+      // matches Default Fallback Intent or BookAppointment.
+      // 9. SAVE REPLACEMENT INFORMATION
+      if (
+        state.stage === "replace" &&
+        FIELDS.includes(state.pending)
+      ) {
+        const field = state.pending;
+        const value = replacement(
+          field,
+          data
+        );
+
+        if (!value) {
+          return send(
+            res,
+            `I couldn't recognize that information. ${PROMPTS[field]}`,
+            editContext
+              ? keepEdit({
+                  ...current,
+                  stage: "replace",
+                  pending: field
+                })
+              : keepBooking({
+                  ...current,
+                  stage: "replace",
+                  pending: field
+                })
+          );
+        }
+
+        if (
+          field === "time" &&
+          !isValidOpeningTime(value)
+        ) {
+          return send(
+            res,
+            HOURS_MESSAGE,
+            editContext
+              ? keepEdit({
+                  ...current,
+                  stage: "replace",
+                  pending: "time"
+                })
+              : keepBooking({
+                  ...current,
+                  stage: "replace",
+                  pending: "time"
+                })
+          );
+        }
+
+        current[field] = value;
+
+        const detailName = {
+          treatment: "treatment",
+          date: "appointment date",
+          time: "appointment time",
+          customer_name: "name",
+          phone_number: "phone number"
+        };
+
+        return send(
+          res,
+          updatedSummary(
+            current,
+            detailName[field]
+          ),
+          editContext
+            ? keepEdit({
+                ...current,
+                stage: "review",
+                pending: ""
+              })
+            : keepBooking({
+                ...current,
+                stage: "review",
+                pending: ""
+              })
+        );
       }
 
       // 1. NEW APPOINTMENT REQUEST
@@ -629,86 +722,6 @@ const server = http.createServer((req, res) => {
             stage: "replace",
             pending: field
           })
-        );
-      }
-
-      // 9. SAVE REPLACEMENT INFORMATION
-      if (
-        state.stage === "replace" &&
-        FIELDS.includes(state.pending)
-      ) {
-        const field = state.pending;
-        const value = replacement(
-          field,
-          data
-        );
-
-        if (!value) {
-          return send(
-            res,
-            `I couldn't recognize that information. ${PROMPTS[field]}`,
-            editContext
-              ? keepEdit({
-                  ...current,
-                  stage: "replace",
-                  pending: field
-                })
-              : keepBooking({
-                  ...current,
-                  stage: "replace",
-                  pending: field
-                })
-          );
-        }
-
-        if (
-          field === "time" &&
-          !isValidOpeningTime(value)
-        ) {
-          return send(
-            res,
-            HOURS_MESSAGE,
-            editContext
-              ? keepEdit({
-                  ...current,
-                  stage: "replace",
-                  pending: "time"
-                })
-              : keepBooking({
-                  ...current,
-                  stage: "replace",
-                  pending: "time"
-                })
-          );
-        }
-
-        current[field] = value;
-
-        const detailName = {
-          treatment: "treatment",
-          date: "appointment date",
-          time: "appointment time",
-          customer_name: "name",
-          phone_number: "phone number"
-        };
-
-        return send(
-          res,
-          updatedSummary(
-            current,
-            detailName[field]
-          ),
-          editContext
-            ? keepEdit({
-                ...current,
-                stage: "review",
-                pending: ""
-              })
-            : keepBooking({
-                ...current,
-                stage: "review",
-                pending: ""
-              })
         );
       }
 
