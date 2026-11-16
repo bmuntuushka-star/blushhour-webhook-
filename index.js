@@ -16,10 +16,12 @@ const PROMPTS = {
 
 function formatDate(value) {
   if (!value) return "your selected date";
+
   const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!match) return String(value);
 
   const [, year, month, day] = match;
+
   return new Intl.DateTimeFormat("en-US", {
     month: "long",
     day: "numeric",
@@ -29,21 +31,34 @@ function formatDate(value) {
 
 function formatTime(value) {
   if (!value) return "your selected time";
+
   const match = String(value).match(/T(\d{2}):(\d{2})/)
     || String(value).match(/^(\d{2}):(\d{2})/);
+
   if (!match) return String(value);
 
   const hour = Number(match[1]);
   const minute = match[2];
+
   return `${hour % 12 || 12}${minute === "00" ? "" : ":" + minute} ${hour >= 12 ? "PM" : "AM"}`;
+}
+
+function appointmentDetails(p) {
+  return `You've requested a ${p.treatment || "treatment"} appointment ` +
+    `on ${formatDate(p.date)} at ${formatTime(p.time)}, ` +
+    `using ${p.phone_number || "your provided number"} ` +
+    `as your contact number. Does everything look correct?`;
 }
 
 function summary(p) {
   return `Thank you, ${p.customer_name || "there"}! 💕 ` +
-    `You've requested a ${p.treatment || "treatment"} appointment ` +
-    `on ${formatDate(p.date)} at ${formatTime(p.time)}, ` +
-    `using ${p.phone_number || "your provided number"} ` +
-    `as your contact number. Does everything look correct?`;
+    appointmentDetails(p);
+}
+
+function updatedSummary(p, detail) {
+  return `I've updated your ${detail}, ${p.customer_name || "there"}! 💕 ` +
+    `Here's your updated appointment request: ` +
+    appointmentDetails(p);
 }
 
 function findContext(contexts) {
@@ -54,12 +69,22 @@ function findContext(contexts) {
 
 function detectField(text) {
   const s = String(text || "").toLowerCase();
-  if (/phone|number|contact|mobile/.test(s)) return "phone_number";
-  if (/date|day/.test(s)) return "date";
-  if (/time|hour/.test(s)) return "time";
+
+  if (/phone|number|contact|mobile/.test(s))
+    return "phone_number";
+
+  if (/date|day/.test(s))
+    return "date";
+
+  if (/time|hour/.test(s))
+    return "time";
+
   if (/treatment|service|manicure|pedicure|facial|massage|hair|nail|spa/.test(s))
     return "treatment";
-  if (/name|spelling/.test(s)) return "customer_name";
+
+  if (/name|spelling/.test(s))
+    return "customer_name";
+
   return null;
 }
 
@@ -68,24 +93,33 @@ function replacement(field, data) {
   const text = String(data.queryResult?.queryText || "").trim();
 
   if (field === "date") {
-    const value = String(p.date || text);
+    const value = String(p.new_date || p.date || text);
     const match = value.match(/\d{4}-\d{2}-\d{2}/);
     return match ? match[0] : null;
   }
 
   if (field === "time") {
     const value = String(p.time || text);
+
     const iso = value.match(/T(\d{2}):(\d{2})/);
     if (iso) return `T${iso[1]}:${iso[2]}`;
 
-    const m = text.match(/\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b/i);
+    const m = text.match(
+      /\b(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b/i
+    );
+
     if (m) {
       const hour = Number(m[1]) % 12 +
         (m[3].toLowerCase() === "pm" ? 12 : 0);
+
       return `T${String(hour).padStart(2, "0")}:${m[2] || "00"}`;
     }
+
     const h24 = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
-    return h24 ? `T${h24[1].padStart(2, "0")}:${h24[2]}` : null;
+
+    return h24
+      ? `T${h24[1].padStart(2, "0")}:${h24[2]}`
+      : null;
   }
 
   if (field === "phone_number") {
@@ -93,18 +127,25 @@ function replacement(field, data) {
   }
 
   if (field === "customer_name") {
-    return /^[\p{L}][\p{L}\s.'-]{1,79}$/u.test(text) ? text : null;
+    return /^[\p{L}][\p{L}\s.'-]{1,79}$/u.test(text)
+      ? text
+      : null;
   }
 
   if (field === "treatment") {
-    return text.length >= 3 && text.length <= 100 ? text : null;
+    return text.length >= 3 && text.length <= 100
+      ? text
+      : null;
   }
 
   return null;
 }
 
 function send(res, message, contexts = []) {
-  res.writeHead(200, { "Content-Type": "application/json" });
+  res.writeHead(200, {
+    "Content-Type": "application/json"
+  });
+
   res.end(JSON.stringify({
     fulfillmentText: message,
     outputContexts: contexts
@@ -121,7 +162,10 @@ const server = http.createServer((req, res) => {
 
   req.on("data", chunk => {
     body += chunk;
-    if (body.length > 100000) req.destroy();
+
+    if (body.length > 100000) {
+      req.destroy();
+    }
   });
 
   req.on("end", () => {
@@ -153,15 +197,56 @@ const server = http.createServer((req, res) => {
         }];
       }
 
+      // NEW APPOINTMENT REQUEST
       if (intent === "BookAppointment") {
         const p = qr.parameters || {};
-        return send(res, summary(p), keep({
-          ...p, stage: "review", pending: ""
-        }));
+
+        return send(
+          res,
+          summary(p),
+          keep({
+            ...p,
+            stage: "review",
+            pending: ""
+          })
+        );
       }
 
+      // CHANGE APPOINTMENT DATE
+      if (intent === "BookAppointmentChangeDate") {
+        const rawDate = String(qr.parameters?.new_date || "");
+        const match = rawDate.match(/\d{4}-\d{2}-\d{2}/);
+
+        if (!match) {
+          return send(
+            res,
+            "Sorry, I couldn't recognize that date. " +
+            "Could you please provide it again?",
+            keep({
+              ...current,
+              stage: "replace",
+              pending: "date"
+            })
+          );
+        }
+
+        current.date = match[0];
+
+        return send(
+          res,
+          updatedSummary(current, "appointment date"),
+          keep({
+            ...current,
+            stage: "review",
+            pending: ""
+          })
+        );
+      }
+
+      // CONFIRM ORIGINAL APPOINTMENT
       if (intent === "BookAppointment - yes") {
-        return send(res,
+        return send(
+          res,
           "Thank you for choosing Blush Hour! 💕 " +
           "Your appointment request has been received. " +
           "Our team will contact you to confirm availability " +
@@ -170,90 +255,155 @@ const server = http.createServer((req, res) => {
         );
       }
 
+      // CUSTOMER WANTS TO CHANGE DETAILS
       if (intent === "BookAppointment - no") {
-        return send(res,
+        return send(
+          res,
           "No problem at all! Which detail would you like " +
           "to change: treatment, date, time, name, or phone number?",
-          keep({ ...current, stage: "choose", pending: "" })
+          keep({
+            ...current,
+            stage: "choose",
+            pending: ""
+          })
         );
       }
 
-      // NEW: Update the selected treatment
+      // CHANGE APPOINTMENT TREATMENT
       if (intent === "UpdateAppointmentTreatment") {
         const treatment = qr.parameters?.treatment;
 
         if (!treatment) {
-          return send(res,
+          return send(
+            res,
             "Which treatment would you prefer instead?",
-            keep({ ...current, stage: "replace", pending: "treatment" })
+            keep({
+              ...current,
+              stage: "replace",
+              pending: "treatment"
+            })
           );
         }
 
         current.treatment = treatment;
 
-        return send(res,
-          `I've updated your treatment! 💕 ${summary(current)}`,
-          keep({ ...current, stage: "review", pending: "" })
+        return send(
+          res,
+          updatedSummary(current, "treatment"),
+          keep({
+            ...current,
+            stage: "review",
+            pending: ""
+          })
         );
       }
 
+      // IDENTIFY WHICH DETAIL NEEDS CHANGING
       if (intent === "ChangeAppointmentDetails") {
         const field = detectField(qr.queryText)
           || detectField(qr.parameters?.detail_to_change);
 
         if (!field) {
-          return send(res,
+          return send(
+            res,
             "Of course! 💕 Which detail would you like to change: " +
             "treatment, date, time, name, or phone number?",
-            keep({ ...current, stage: "choose", pending: "" })
+            keep({
+              ...current,
+              stage: "choose",
+              pending: ""
+            })
           );
         }
 
-        return send(res,
+        return send(
+          res,
           `Of course! 💕 ${PROMPTS[field]}`,
-          keep({ ...current, stage: "replace", pending: field })
+          keep({
+            ...current,
+            stage: "replace",
+            pending: field
+          })
         );
       }
 
+      // CUSTOMER CHOOSES A DETAIL TO EDIT
       if (state.stage === "choose") {
         const field = detectField(qr.queryText);
 
         if (!field) {
-          return send(res,
+          return send(
+            res,
             "Please choose: treatment, date, time, name, or phone number.",
-            keep({ ...current, stage: "choose", pending: "" })
+            keep({
+              ...current,
+              stage: "choose",
+              pending: ""
+            })
           );
         }
 
-        return send(res, PROMPTS[field],
-          keep({ ...current, stage: "replace", pending: field })
+        return send(
+          res,
+          PROMPTS[field],
+          keep({
+            ...current,
+            stage: "replace",
+            pending: field
+          })
         );
       }
 
-      if (state.stage === "replace" && FIELDS.includes(state.pending)) {
+      // SAVE REPLACEMENT INFORMATION
+      if (
+        state.stage === "replace" &&
+        FIELDS.includes(state.pending)
+      ) {
         const field = state.pending;
         const value = replacement(field, data);
 
         if (!value) {
-          return send(res,
+          return send(
+            res,
             `I couldn't recognize that information. ${PROMPTS[field]}`,
-            keep({ ...current, stage: "replace", pending: field })
+            keep({
+              ...current,
+              stage: "replace",
+              pending: field
+            })
           );
         }
 
         current[field] = value;
 
-        return send(res,
-          `I've updated that detail! 💕 ${summary(current)}`,
-          keep({ ...current, stage: "review", pending: "" })
+        const detailName = {
+          treatment: "treatment",
+          date: "appointment date",
+          time: "appointment time",
+          customer_name: "name",
+          phone_number: "phone number"
+        };
+
+        return send(
+          res,
+          updatedSummary(current, detailName[field]),
+          keep({
+            ...current,
+            stage: "review",
+            pending: ""
+          })
         );
       }
 
+      // FINAL REVIEW AND CONFIRMATION
       if (state.stage === "review") {
         const answer = String(qr.queryText || "").trim();
 
-        if (/^(yes|yep|yeah|correct|looks good|confirm|that's right|all good)[.! ]*$/i.test(answer)) {
-          return send(res,
+        if (
+          /^(yes|yep|yeah|correct|looks good|confirm|that's right|all good)[.! ]*$/i.test(answer)
+        ) {
+          return send(
+            res,
             "Thank you for choosing Blush Hour! 💕 " +
             "Your appointment request has been received. " +
             "Our team will contact you to confirm availability " +
@@ -262,21 +412,34 @@ const server = http.createServer((req, res) => {
           );
         }
 
-        if (/^(no|nope|incorrect|change|edit|not quite)/i.test(answer)) {
-          return send(res,
+        if (
+          /^(no|nope|incorrect|change|edit|not quite)/i.test(answer)
+        ) {
+          return send(
+            res,
             "No problem! Which detail would you like to change?",
-            keep({ ...current, stage: "choose", pending: "" })
+            keep({
+              ...current,
+              stage: "choose",
+              pending: ""
+            })
           );
         }
       }
 
-      return send(res,
+      return send(
+        res,
         "How can I help you with your appointment?"
       );
 
     } catch (error) {
-      res.writeHead(400, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Invalid request" }));
+      res.writeHead(400, {
+        "Content-Type": "application/json"
+      });
+
+      res.end(JSON.stringify({
+        error: "Invalid request"
+      }));
     }
   });
 });
