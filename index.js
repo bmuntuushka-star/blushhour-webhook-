@@ -178,6 +178,25 @@ const server = http.createServer((req, res) => {
         );
       }
 
+      // NEW: Update the selected treatment
+      if (intent === "UpdateAppointmentTreatment") {
+        const treatment = qr.parameters?.treatment;
+
+        if (!treatment) {
+          return send(res,
+            "Which treatment would you prefer instead?",
+            keep({ ...current, stage: "replace", pending: "treatment" })
+          );
+        }
+
+        current.treatment = treatment;
+
+        return send(res,
+          `I've updated your treatment! 💕 ${summary(current)}`,
+          keep({ ...current, stage: "review", pending: "" })
+        );
+      }
+
       if (intent === "ChangeAppointmentDetails") {
         const field = detectField(qr.queryText)
           || detectField(qr.parameters?.detail_to_change);
