@@ -1,0 +1,449 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BlushHour | Beauty & Wellness</title>
+
+  <style>
+    :root {
+      --pink: #b85c78;
+      --dark: #402b35;
+      --cream: #fff9f6;
+      --soft-pink: #f8e5e9;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--cream);
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 8%;
+      background: white;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    }
+
+    .logo {
+      font-family: Georgia, serif;
+      font-size: 29px;
+      font-weight: bold;
+      color: var(--pink);
+    }
+
+    nav a {
+      margin-left: 24px;
+      text-decoration: none;
+      color: var(--dark);
+      font-size: 14px;
+    }
+
+    nav a:hover {
+      color: var(--pink);
+    }
+
+    .hero {
+      min-height: 510px;
+      display: flex;
+      align-items: center;
+      padding: 80px 8%;
+      background:
+        linear-gradient(105deg,
+          rgba(255,245,245,0.97),
+          rgba(255,232,239,0.76)),
+        linear-gradient(135deg, #fce5ec, #e9c1ce);
+    }
+
+    .hero-content {
+      max-width: 670px;
+    }
+
+    .eyebrow {
+      color: var(--pink);
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    h1, h2, h3 {
+      font-family: Georgia, serif;
+    }
+
+    h1 {
+      font-size: clamp(42px, 6vw, 72px);
+      line-height: 1.12;
+      margin: 18px 0;
+      font-weight: normal;
+    }
+
+    h1 span {
+      color: var(--pink);
+      font-style: italic;
+    }
+
+    .hero p {
+      max-width: 540px;
+      font-size: 17px;
+      color: #755c68;
+    }
+
+    .button {
+      display: inline-block;
+      margin-top: 22px;
+      padding: 15px 30px;
+      background: var(--pink);
+      color: white;
+      text-decoration: none;
+      border-radius: 30px;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .button:hover {
+      background: #98445f;
+    }
+
+    section {
+      padding: 75px 8%;
+    }
+
+    .section-heading {
+      text-align: center;
+      margin-bottom: 42px;
+    }
+
+    .section-heading h2 {
+      font-size: 40px;
+      margin: 10px 0;
+      font-weight: normal;
+    }
+
+    .section-heading p {
+      color: #826c75;
+    }
+
+    .services {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .service-card {
+      background: white;
+      padding: 36px 28px;
+      border-radius: 18px;
+      box-shadow: 0 6px 25px rgba(80,30,50,0.05);
+      text-align: center;
+      transition: transform 0.2s;
+    }
+
+    .service-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .service-icon {
+      font-size: 38px;
+    }
+
+    .service-card h3 {
+      font-size: 23px;
+      margin-bottom: 8px;
+    }
+
+    .service-card p {
+      color: #826c75;
+      font-size: 14px;
+    }
+
+    .about {
+      background: var(--soft-pink);
+      text-align: center;
+    }
+
+    .about-content {
+      max-width: 740px;
+      margin: auto;
+    }
+
+    .about h2 {
+      font-size: 40px;
+      font-weight: normal;
+    }
+
+    .hours {
+      text-align: center;
+      background: white;
+    }
+
+    .hours h2 {
+      font-size: 38px;
+      font-weight: normal;
+    }
+
+    .hours-box {
+      display: inline-block;
+      background: var(--cream);
+      border: 1px solid #f0d7df;
+      padding: 25px 50px;
+      border-radius: 16px;
+      margin-top: 15px;
+    }
+
+    .hours-box strong {
+      color: var(--pink);
+      font-size: 22px;
+    }
+
+    .booking {
+      text-align: center;
+      background: linear-gradient(135deg, #fbe5eb, #f7d7e1);
+    }
+
+    .booking h2 {
+      font-size: 42px;
+      font-weight: normal;
+    }
+
+    footer {
+      background: var(--dark);
+      color: white;
+      text-align: center;
+      padding: 30px 20px;
+      font-size: 13px;
+    }
+
+    df-messenger {
+      --df-messenger-bot-message: #f8e5e9;
+      --df-messenger-button-titlebar-color: #b85c78;
+      --df-messenger-chat-background-color: #fff9f6;
+      --df-messenger-font-color: #402b35;
+      --df-messenger-send-icon: #b85c78;
+      --df-messenger-user-message: #f0d0dc;
+    }
+
+    @media (max-width: 800px) {
+      header {
+        padding: 18px 5%;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      nav a {
+        margin: 0 9px;
+      }
+
+      .hero {
+        padding: 70px 6%;
+      }
+
+      section {
+        padding: 60px 6%;
+      }
+
+      .services {
+        grid-template-columns: 1fr;
+      }
+
+      .section-heading h2,
+      .about h2,
+      .hours h2,
+      .booking h2 {
+        font-size: 32px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">BlushHour ♡</div>
+
+    <nav>
+      <a href="#home">Home</a>
+      <a href="#services">Services</a>
+      <a href="#about">About</a>
+      <a href="#hours">Opening Hours</a>
+      <a href="#booking">Book Now</a>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <main id="home" class="hero">
+    <div class="hero-content">
+      <div class="eyebrow">Your beauty, your moment</div>
+
+      <h1>
+        A little time for
+        <span>yourself.</span>
+      </h1>
+
+      <p>
+        Welcome to BlushHour, your destination for beauty,
+        relaxation, and self-care. Explore our salon and spa
+        treatments and let us help you plan your next visit.
+      </p>
+
+      <a class="button" href="#booking">
+        Book Your Appointment
+      </a>
+    </div>
+  </main>
+
+  <!-- SERVICES -->
+  <section id="services">
+    <div class="section-heading">
+      <div class="eyebrow">What we offer</div>
+      <h2>Our Beauty & Spa Services</h2>
+      <p>Discover your perfect self-care experience.</p>
+    </div>
+
+    <div class="services">
+      <div class="service-card">
+        <div class="service-icon">💇‍♀️</div>
+        <h3>Hair Styling</h3>
+        <p>
+          Haircuts, blow-dries, and styling services
+          to refresh your look.
+        </p>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon">💅</div>
+        <h3>Nail Care</h3>
+        <p>
+          Manicures, pedicures, and gel nail treatments
+          for beautifully cared-for nails.
+        </p>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon">🌸</div>
+        <h3>Facials</h3>
+        <p>
+          Refresh and pamper your skin with
+          our facial treatments.
+        </p>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon">🧖‍♀️</div>
+        <h3>Massage</h3>
+        <p>
+          Relax, unwind, and enjoy a peaceful
+          wellness experience.
+        </p>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon">✨</div>
+        <h3>Beauty Treatments</h3>
+        <p>
+          Explore our selection of salon services
+          designed around your needs.
+        </p>
+      </div>
+
+      <div class="service-card">
+        <div class="service-icon">💕</div>
+        <h3>Personalized Care</h3>
+        <p>
+          Our assistant helps you select a treatment
+          and request an appointment.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about" class="about">
+    <div class="about-content">
+      <div class="eyebrow">The BlushHour experience</div>
+      <h2>Beauty begins with self-care.</h2>
+      <p>
+        At BlushHour, we believe everyone deserves a moment
+        to feel beautiful, relaxed, and confident.
+        Whether you're visiting for a quick hair refresh
+        or a relaxing spa treatment, we're here to
+        make your experience special.
+      </p>
+    </div>
+  </section>
+
+  <!-- OPENING HOURS -->
+  <section id="hours" class="hours">
+    <div class="eyebrow">Visit us</div>
+    <h2>Opening Hours</h2>
+    <p>We're here for your beauty and wellness needs.</p>
+
+    <div class="hours-box">
+      <p>Monday – Sunday</p>
+      <strong>9:00 AM – 10:00 PM</strong>
+      <p>Open every day ♡</p>
+    </div>
+  </section>
+
+  <!-- BOOKING -->
+  <section id="booking" class="booking">
+    <div class="eyebrow">Your next appointment</div>
+    <h2>Ready for your BlushHour?</h2>
+
+    <p>
+      Our virtual assistant can help you explore
+      treatments and request your next appointment.
+    </p>
+
+    <p>
+      Click the BlushHour chat icon in the
+      bottom-right corner to get started! 💕
+    </p>
+
+    <button class="button" type="button"
+      onclick="document.querySelector('df-messenger').setAttribute('expand', 'true')">
+      Chat With BlushHour
+    </button>
+
+    <p style="font-size: 13px; margin-top: 24px;">
+      Appointment requests are subject to availability.
+      Our team will contact you to finalize your booking.
+    </p>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <strong>BlushHour ♡</strong>
+    <p>Beauty • Wellness • Self-Care</p>
+    <p>© 2026 BlushHour. All rights reserved.</p>
+  </footer>
+
+  <!-- OFFICIAL DIALOGFLOW MESSENGER INTEGRATION -->
+  <script src="https://www.gstatic.com/dialogflow-console/fast/messenger/bootstrap.js?v=1"></script>
+
+  <df-messenger
+    intent="WELCOME"
+    chat-title="BlushHour"
+    agent-id="b1b360e0-cc33-4963-835e-311c1f1db84a"
+    language-code="en"
+  ></df-messenger>
+
+</body>
+</html>
